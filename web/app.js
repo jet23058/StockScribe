@@ -51,6 +51,14 @@ form.addEventListener("submit", async (event) => {
     if (!response.ok) {
       throw new Error(data.error || "建立快照失敗");
     }
+    if (data.result) {
+      latestSnapshot = data.result;
+      setProgress(data.progress);
+      renderSnapshot(data.result);
+      setStatus(`完成：找到 ${data.result.stocks.length} 檔股票。`);
+      button.disabled = false;
+      return;
+    }
     pollJob(data.job_id);
   } catch (error) {
     latestSnapshot = null;

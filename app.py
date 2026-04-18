@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import os
 import pathlib
 import threading
 import time
@@ -20,6 +21,7 @@ ROOT = pathlib.Path(__file__).resolve().parent
 WEB_ROOT = ROOT / "web"
 JOBS: dict[str, dict[str, Any]] = {}
 JOBS_LOCK = threading.Lock()
+IS_VERCEL = bool(os.environ.get("VERCEL"))
 
 
 class StockScribeHandler(BaseHTTPRequestHandler):
@@ -82,6 +84,10 @@ class StockScribeHandler(BaseHTTPRequestHandler):
             self._send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
             return
 
+        if IS_VERCEL:
+            self._create_sync_job(payload)
+            return
+
         job_id = uuid.uuid4().hex
         job = {
             "id": job_id,
@@ -97,6 +103,63 @@ class StockScribeHandler(BaseHTTPRequestHandler):
         thread = threading.Thread(target=_run_snapshot_job, args=(job_id, payload), daemon=True)
         thread.start()
         self._send_json({"job_id": job_id}, HTTPStatus.ACCEPTED)
+
+    def _create_sync_job(self, payload: dict[str, Any]) -> None:
+        job_id = uuid.uuid4().hex
+        progress_state = {"stage": "queued", "current": 0, "total": 1, "message": "等待開始"}
+
+        def set_progress(progress: dict[str, Any]) -> None:
+            nonlocal progress_state
+            progress_state = progress
+
+        try:
+            snapshot = StockScribe().snapshot_url(
+                str(payload.get("url") or "").strip(),
+                start=_blank_to_none(payload.get("start")),
+                end=_blank_to_none(payload.get("end")),
+                market=str(payload.get("market") or "auto"),
+                force_refresh=bool(payload.get("force_refresh")),
+                progress=set_progress,
+            )
+        except StockScribeError as exc:
+            self._send_json(
+                {
+                    "job_id": job_id,
+                    "state": "error",
+                    "error": str(exc),
+                    "progress": {"stage": "error", "current": 1, "total": 1, "message": str(exc)},
+                },
+                HTTPStatus.BAD_REQUEST,
+            )
+            return
+        except Exception as exc:
+            error = f"Unexpected server error: {exc}"
+            self._send_json(
+                {
+                    "job_id": job_id,
+                    "state": "error",
+                    "error": error,
+                    "progress": {"stage": "error", "current": 1, "total": 1, "message": error},
+                },
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+            )
+            return
+
+        self._send_json(
+            {
+                "job_id": job_id,
+                "state": "done",
+                "progress": {
+                    "stage": "done",
+                    "current": 1,
+                    "total": 1,
+                    "message": f"完成：找到 {len(snapshot.get('stocks', []))} 檔股票",
+                },
+                "last_progress": progress_state,
+                "result": snapshot,
+            },
+            HTTPStatus.OK,
+        )
 
     def _send_job(self, job_id: str) -> None:
         with JOBS_LOCK:
