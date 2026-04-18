@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>StockScribe</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main>
+      <section class="workspace">
+        <div class="intro">
+          <img
+            class="market-photo"
+            src="https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1200&q=80"
+            alt="Market chart on a trading desk"
+          >
+          <div>
+            <p class="eyebrow">StockScribe</p>
+            <h1>貼上文章網址，留下股票快照。</h1>
+            <p class="lead">抓出內文提到的股票，依文章時間或指定區間查 Yahoo 歷史資料，整理起點到終點的表現。</p>
+          </div>
+        </div>
+
+        <form id="snapshot-form" class="control-surface">
+          <label>
+            文章網址
+            <input id="url" name="url" type="url" placeholder="https://example.com/article" required>
+          </label>
+
+          <div class="date-grid">
+            <label>
+              起始日
+              <input id="start" name="start" type="date">
+            </label>
+            <label>
+              結束日
+              <input id="end" name="end" type="date">
+            </label>
+            <label>
+              市場
+              <select id="market" name="market">
+                <option value="auto">自動</option>
+                <option value="tw">台股上市 .TW</option>
+                <option value="tpex">台股上櫃 .TWO</option>
+                <option value="us">美股</option>
+              </select>
+            </label>
+          </div>
+
+          <label class="option-row">
+            <input id="force-refresh" name="force_refresh" type="checkbox">
+            <span>強制重新搜尋文章股票</span>
+          </label>
+
+          <button id="submit-button" type="submit">建立快照</button>
+          <p class="hint">不填日期時，會先讀內文日期；同一篇文章會快取股票清單，需要重抓時勾選強制重新搜尋。</p>
+        </form>
+      </section>
+
+      <section id="status" class="status" hidden></section>
+      <section id="progress-panel" class="progress-panel" hidden>
+        <div class="progress-copy">
+          <strong id="progress-label">準備建立快照</strong>
+          <span id="progress-count"></span>
+        </div>
+        <progress id="progress-bar" value="0" max="100"></progress>
+      </section>
+
+      <section id="results" class="results" hidden>
+        <div class="summary-head">
+          <div>
+            <p class="eyebrow">Snapshot</p>
+            <h2 id="range-title"></h2>
+          </div>
+          <button id="download-button" type="button">下載 JSON</button>
+        </div>
+
+        <div class="result-tabs" role="tablist" aria-label="快照結果">
+          <button class="tab-button active" type="button" role="tab" aria-selected="true" aria-controls="chart-panel" data-tab="chart-panel">報酬率圖表</button>
+          <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="account-panel" data-tab="account-panel">帳號推薦排行</button>
+          <button class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="performance-panel" data-tab="performance-panel">區間賺/虧</button>
+        </div>
+
+        <div id="chart-panel" class="tab-panel active" role="tabpanel">
+          <div class="result-block chart-block">
+            <h3>報酬率圖表</h3>
+            <div id="return-chart" class="return-chart"></div>
+          </div>
+        </div>
+
+        <div id="account-panel" class="tab-panel" role="tabpanel" hidden>
+          <div class="result-block account-rank-block">
+            <h3>帳號推薦排行</h3>
+            <div id="account-rankings" class="account-rankings"></div>
+          </div>
+        </div>
+
+        <div id="performance-panel" class="tab-panel" role="tabpanel" hidden>
+          <div class="result-block profit-block">
+            <h3>這段區間是賺的</h3>
+            <div id="profit-grid" class="summary-grid"></div>
+          </div>
+
+          <div class="result-block loss-block">
+            <h3>這段區間是賠的</h3>
+            <div id="loss-grid" class="summary-grid"></div>
+          </div>
+
+          <div id="no-data-block" class="result-block no-data-block" hidden>
+            <h3>沒有漲跌或資料不足</h3>
+            <div id="no-data-grid" class="summary-grid"></div>
+          </div>
+        </div>
+
+        <details class="raw-panel">
+          <summary>查看 JSON</summary>
+          <pre id="json-output"></pre>
+        </details>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
