@@ -364,6 +364,19 @@ function renderCard(summary) {
   }
 
   const directionClass = summary.change >= 0 ? "positive" : "negative";
+  card.classList.add("interactive-card");
+  card.tabIndex = 0;
+  card.setAttribute("role", "button");
+  card.setAttribute("aria-expanded", "false");
+  card.addEventListener("click", (event) => {
+    if (event.target.closest("a")) return;
+    toggleStockChart(card);
+  });
+  card.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    toggleStockChart(card);
+  });
   card.innerHTML = `
     <h4>${escapeHtml(title)}</h4>
     <dl class="metric-list">
@@ -377,8 +390,75 @@ function renderCard(summary) {
       ${metric("總成交量", formatNumber(summary.total_volume))}
       ${metric("提及帳號", formatMentionAccounts(summary.mentioned_by))}
     </dl>
+    <p class="card-action">點擊查看收盤價走勢</p>
+    <div class="stock-price-chart" hidden>
+      ${renderStockPriceChart(summary)}
+    </div>
   `;
   return card;
+}
+
+function toggleStockChart(card) {
+  const chart = card.querySelector(".stock-price-chart");
+  if (!chart) return;
+  const shouldOpen = chart.hidden;
+  chart.hidden = !shouldOpen;
+  card.classList.toggle("expanded", shouldOpen);
+  card.setAttribute("aria-expanded", String(shouldOpen));
+  const action = card.querySelector(".card-action");
+  if (action) {
+    action.textContent = shouldOpen ? "點擊收合收盤價走勢" : "點擊查看收盤價走勢";
+  }
+}
+
+function renderStockPriceChart(summary) {
+  const rows = latestSnapshot?.histories?.[summary.symbol] || [];
+  const points = rows
+    .map((row) => ({
+      date: row.date,
+      close: Number(row.close),
+    }))
+    .filter((row) => Number.isFinite(row.close));
+
+  if (points.length < 2) {
+    return '<p class="empty-chart-note">這段期間沒有足夠的價格資料可以畫線。</p>';
+  }
+
+  const width = 420;
+  const height = 180;
+  const padX = 18;
+  const padY = 22;
+  const min = Math.min(...points.map((point) => point.close));
+  const max = Math.max(...points.map((point) => point.close));
+  const span = max - min || 1;
+  const path = points
+    .map((point, index) => {
+      const x = padX + (index / (points.length - 1)) * (width - padX * 2);
+      const y = padY + ((max - point.close) / span) * (height - padY * 2);
+      return `${formatSvgNumber(x)},${formatSvgNumber(y)}`;
+    })
+    .join(" ");
+  const first = points[0];
+  const last = points[points.length - 1];
+
+  return `
+    <svg class="price-line-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(summary.symbol)} 收盤價折線圖">
+      <line class="price-grid-line" x1="${padX}" y1="${padY}" x2="${width - padX}" y2="${padY}"></line>
+      <line class="price-grid-line" x1="${padX}" y1="${height - padY}" x2="${width - padX}" y2="${height - padY}"></line>
+      <polyline class="price-line" points="${path}"></polyline>
+      <circle class="price-point" cx="${path.split(" ")[0].split(",")[0]}" cy="${path.split(" ")[0].split(",")[1]}" r="3"></circle>
+      <circle class="price-point" cx="${path.split(" ").at(-1).split(",")[0]}" cy="${path.split(" ").at(-1).split(",")[1]}" r="3"></circle>
+    </svg>
+    <div class="price-chart-meta">
+      <span>${escapeHtml(first.date)}：${formatNumber(first.close)}</span>
+      <strong>${formatNumber(min)} - ${formatNumber(max)}</strong>
+      <span>${escapeHtml(last.date)}：${formatNumber(last.close)}</span>
+    </div>
+  `;
+}
+
+function formatSvgNumber(value) {
+  return Number(value).toFixed(2);
 }
 
 function metric(label, value) {

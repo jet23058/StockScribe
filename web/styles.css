@@ -439,9 +439,85 @@ progress::-moz-progress-bar {
   gap: 12px;
 }
 
+.interactive-card {
+  cursor: pointer;
+}
+
+.interactive-card:focus {
+  outline: 3px solid rgba(18, 107, 85, 0.18);
+  outline-offset: 2px;
+}
+
+.interactive-card.expanded {
+  border-color: rgba(18, 107, 85, 0.45);
+}
+
 .stock-card h4 {
   margin: 0;
   font-size: 1.35rem;
+}
+
+.card-action {
+  margin: 0;
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.stock-price-chart {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.stock-price-chart[hidden] {
+  display: none;
+}
+
+.price-line-chart {
+  width: 100%;
+  aspect-ratio: 21 / 9;
+  display: block;
+  background: #f3f6f2;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.price-grid-line {
+  stroke: #d8ded9;
+  stroke-width: 1;
+}
+
+.price-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.price-point {
+  fill: var(--panel);
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.price-chart-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.price-chart-meta strong {
+  color: var(--ink);
+}
+
+.empty-chart-note {
+  margin: 0;
+  color: var(--muted);
 }
 
 .empty-state {
@@ -571,5 +647,9 @@ pre {
 
   .mover-values {
     text-align: left;
+  }
+
+  .price-chart-meta {
+    display: grid;
   }
 }
